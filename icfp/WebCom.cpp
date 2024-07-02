@@ -100,19 +100,35 @@ std::string WebCom::post(const std::string& data) const
 WebCom::_html_page WebCom::_parseHtml(std::stringstream& html_page_raw) {
 	_html_page page;
 
-	// Header
+	// Header | TODO: parse it (at least to get the return code, the content-type and the encoding)
 	for (std::string line; std::getline(html_page_raw, line, '\n') && line.size() > 1;)
 	{
 		page.header.push_back(line);
 	}
 
-	// Body
-	std::string body_line_size;
-	std::getline(html_page_raw, body_line_size, '\n');
+	// Body | Assuming "Transfer-Encoding: chunked"
+	for (size_t iPos = 0; !html_page_raw.eof();)
+	{
+		// Chunk: 
+		//	 - [size]\r\n
+		//	 - [CHUNKY content] (size)
+		//	 - 0\r\n
+		//	 - \r\n
 
-	size_t body_size = (size_t)std::stoi(body_line_size.c_str(), nullptr, 16);
-	page.body.resize(body_size);
-	html_page_raw.read(& page.body[0], body_size);
+		std::string body_line_size;
+		std::getline(html_page_raw, body_line_size, '\n');
+
+		if (body_line_size.size() < std::string("\r\n").size())
+			continue;
+
+		size_t body_size = (size_t)std::stoi(body_line_size.c_str(), nullptr, 16);
+		if (body_size < 1)
+			continue;
+
+		page.body.resize(page.body.size() + body_size);
+		html_page_raw.read(&page.body[iPos], body_size);
+		iPos += body_size;
+	}
 
 	return page;
 }
