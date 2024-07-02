@@ -8,9 +8,9 @@
 #include <chrono>
 #include <thread>
 
-using namespace std;
-
 #pragma comment(lib, "ws2_32.lib")
+
+using namespace std;
 
 WebCom& WebCom::GetInstance() {
 	struct _WebCom : public WebCom {};
@@ -23,9 +23,7 @@ WebCom::WebCom() {
 	WSADATA wsaData;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-#ifdef _DEBUG
 		cerr << "WSAStartup failed.\n";
-#endif
 		return;
 	}
 }
@@ -143,17 +141,17 @@ std::string WebCom::_parse_body(std::stringstream& in_body) {
 
 	while (!in_body.eof())
 	{
-		std::string chunk_size(size_t(10), '\0');
-		in_body.get(&chunk_size[0], chunk_size.size());
+		std::string chunk_size;
+		getline(in_body, chunk_size);
 
 		// Last chunk: size 0 (or empty size)
 		int body_size = std::stoi(chunk_size.c_str(), nullptr, 0x10);
 		if (body_size == 0)
 			break;
 
-		std::string body_chunk((size_t)body_size+3, '\0');
+		std::string body_chunk((size_t)body_size+2, '\0');	// +2 because there are \r\n at the end
 		in_body.read(&body_chunk[0], body_chunk.size());
-		content += body_chunk.substr(1, body_size);
+		content += body_chunk.substr(0, body_size);			// truncate unwanted chars
 	}
 
 	return content;
