@@ -1,0 +1,9 @@
+﻿################################################################################
+# Ce fichier .gitignore a été automatiquement créé par Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/icfp/FileContentIndex
+/.vs/icfp/v17/ipch/AutoPCH
+/.vs/icfp/v17
+/icfp/x64
+/x64

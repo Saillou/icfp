@@ -34,7 +34,8 @@ namespace Language
 		alien << "S";
 
 		for (size_t i = 0; i < human_string.size(); i++) {
-			alien << char(HUMAN_TABLE[human_string[i]] + 33);
+			char human_code = human_string[i];
+			alien << char(HUMAN_TABLE[human_code] + 33);
 		}
 
 		return alien.str();
