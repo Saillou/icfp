@@ -5,6 +5,8 @@
 #include <iostream>
 #include <sstream>
 #include <memory>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -78,36 +80,69 @@ std::string WebCom::post(const std::string& data) const
 	send(_socketConnection, request.c_str(), (int)request.size(), 0);
 
 	// Receive answer
-	stringstream http_answer;
-	constexpr int _buffer_max_size = 1024;
+	constexpr int _buffer_max_size		  = 1024;
 	static char _buffer[_buffer_max_size] = { 0 };
 
-	for(int _current_buffer_usage = 0;;) {
-		_current_buffer_usage = recv(_socketConnection, _buffer, _buffer_max_size, 0);
-
-		http_answer << std::string(_buffer, _buffer + _current_buffer_usage);
-
-		// Still have some data ?
-		unsigned long count = 0;
-		ioctlsocket(_socketConnection, FIONREAD, &count);
-		if(count == 0)
-			break;
+	_html_page page;
+	stringstream answer;
+	{
+		int _current_buffer_usage = recv(_socketConnection, _buffer, _buffer_max_size, 0);
+		answer << std::string(_buffer, _buffer + _current_buffer_usage);
 	}
+	_parse_header(answer, page);
 
-	return _parseHtml(http_answer).body;
+	for(;;)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+		unsigned long remaining = 0;
+		ioctlsocket(_socketConnection, FIONREAD, &remaining);
+		if (remaining == 0)
+			break;
+
+		int _current_buffer_usage = recv(_socketConnection, _buffer, _buffer_max_size, 0);
+
+		answer << std::string(_buffer, _buffer + _current_buffer_usage);
+	}
+	_parse_body(answer, page);
+
+	return page.body;
 }
 
-WebCom::_html_page WebCom::_parseHtml(std::stringstream& html_page_raw) {
-	_html_page page;
-
-	// Header | TODO: parse it (at least to get the return code, the content-type and the encoding)
-	for (std::string line; std::getline(html_page_raw, line, '\n') && line.size() > 1;)
+void WebCom::_parse_header(std::stringstream& in_header, _html_page& page) {
+	for (std::string line; std::getline(in_header, line, '\n') && line.size() >= 2;)
 	{
-		page.header.push_back(line);
+		size_t delim_pos = line.find(' ');
+		if (delim_pos == std::string::npos)
+			continue;
+
+		const std::string key = line.substr(0, delim_pos);
+		const std::string value = line.substr(delim_pos + 1);
+
+		if (key == "HTTP/1.1") {
+			const std::string code_str = value.substr(0, value.find(' '));
+			page.header.return_code = std::stoi(code_str);
+			continue;
+		}
+		if (key == "Transfer-Encoding:") {
+			page.header.encoding_flags = _html_page::_encoding_flag::None;
+
+			if (std::string::npos != value.find("chunked"))	 page.header.encoding_flags |= _html_page::_encoding_flag::Chunked;
+			if (std::string::npos != value.find("compress")) page.header.encoding_flags |= _html_page::_encoding_flag::Compress;
+			if (std::string::npos != value.find("deflate"))	 page.header.encoding_flags |= _html_page::_encoding_flag::Deflate;
+			if (std::string::npos != value.find("gzip"))	 page.header.encoding_flags |= _html_page::_encoding_flag::Gzip;
+			continue;
+		}
+		if (key == "Content-Type:") {
+			page.header.content_type = value;
+			continue;
+		}
 	}
 
+}
+void WebCom::_parse_body(std::stringstream& in_body, _html_page& page) {
 	// Body | Assuming "Transfer-Encoding: chunked"
-	for (size_t iPos = 0; !html_page_raw.eof();)
+	for (size_t iPos = 0; !in_body.eof();)
 	{
 		// Chunk: 
 		//	 - [size]\r\n
@@ -116,9 +151,9 @@ WebCom::_html_page WebCom::_parseHtml(std::stringstream& html_page_raw) {
 		//	 - \r\n
 
 		std::string body_line_size;
-		std::getline(html_page_raw, body_line_size, '\n');
+		std::getline(in_body, body_line_size, '\n');
 
-		if (body_line_size.size() < std::string("\r\n").size())
+		if (body_line_size.size() <= 2)
 			continue;
 
 		size_t body_size = (size_t)std::stoi(body_line_size.c_str(), nullptr, 16);
@@ -126,9 +161,7 @@ WebCom::_html_page WebCom::_parseHtml(std::stringstream& html_page_raw) {
 			continue;
 
 		page.body.resize(page.body.size() + body_size);
-		html_page_raw.read(&page.body[iPos], body_size);
+		in_body.read(&page.body[iPos], body_size);
 		iPos += body_size;
 	}
-
-	return page;
 }
