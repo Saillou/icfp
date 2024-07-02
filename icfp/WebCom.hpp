@@ -6,14 +6,8 @@ struct WebCom {
 	static WebCom& GetInstance();
 	virtual ~WebCom();
 
-	std::string post(const std::string& data) const;
-
-protected:
-	WebCom();
-
-private:
-	struct _html_page {
-		enum _encoding_flag {
+	struct HtmlPage {
+		enum encoding_flag {
 			None		= 0b0000,
 			Chunked		= 0b0001,
 			Compress	= 0b0010,
@@ -21,17 +15,26 @@ private:
 			Gzip		= 0b1000,
 		};
 
-		struct {
-			int			return_code;
-			int			encoding_flags;
-			std::string content_type;
+		struct Header {
+			int			return_code    = 0;
+			int			encoding_flags = encoding_flag::None;
+			std::string content_type   = "";
 		} header;
 
 		std::string body;
 	};
 
-	static void _parse_header(std::stringstream& in_header, _html_page& parsed_page);
-	static void _parse_body(std::stringstream& in_body, _html_page& parsed_page);
+	HtmlPage post(const std::string& data);
+
+protected:
+	WebCom();
+	bool _connect();
+	void _disconnect();
+
+private:
+
+	static HtmlPage::Header _parse_header(std::stringstream& in_header);
+	static std::string		_parse_body(std::stringstream& in_body);
 
 	int _socketConnection			 = 0;
 	const std::string _ServerIP		 = "152.228.163.160";

@@ -19,7 +19,7 @@ int main() {
 			continue;
 		}
 
-		std::cout << Language::Decode(webcom.post(Language::Encode(request))) << std::endl;
+		std::cout << Language::Decode(webcom.post(Language::Encode(request)).body) << std::endl;
 	}
 
 	return 0;
