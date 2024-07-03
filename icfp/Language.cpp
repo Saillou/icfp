@@ -9,6 +9,12 @@
 
 using namespace std;
 
+// Private
+std::string translate_alien_to_human(const Language::Token&);
+std::string translate_alien_to_human_str(const std::string&);
+std::string translate_alien_to_human_int(const std::string&);
+
+// Public
 namespace Language 
 {
 	const std::vector<char> ALIEN_TABLE = { 
@@ -43,38 +49,67 @@ namespace Language
 
 	const std::string Decode(const std::string& alien_string) {
 		std::stringstream alien(alien_string);
-		std::stringstream human;
+		std::vector<Token> tokens;
 
 		for (std::string alien_command; std::getline(alien, alien_command, ' ');)
 		{
 			if (alien_command.empty())
 				continue;
 
-			const char token = alien_command[0];
-
-			switch (token)
-			{
-
-			// -- Decode as string --
-			case 'S': 
-				for (size_t i = 1; i < alien_command.size(); i++) {
-					char alien_code = alien_command[i];
-					if (alien_code < 33 || alien_code > ALIEN_TABLE.size() + 33) {
-						human << "_";
-						continue;
-					}
-					human << char(ALIEN_TABLE[alien_code - 33]);
-				}
-				break;
-			
-			
-			default: 
-				std::cout << "Unknown token: " << token << std::endl;
-				continue;
-			}
+			tokens.push_back({ 
+				alien_command[0], 
+				alien_command.substr(1) 
+			});
 		}
 
-		return human.str();
+		return Eval(tokens);
 	}
 
+	const std::string Eval(const std::vector<Token>& tokens) {
+		std::string human_str;
+
+		for (const auto& token : tokens) {
+			std::string human = translate_alien_to_human(token);
+			human_str += human;
+		}
+
+		return human_str;
+	}
+}
+
+// - Helpers -
+std::string translate_alien_to_human(const Language::Token& token) {
+	switch (token.indicator)
+	{
+	case 'S': return translate_alien_to_human_str(token.body);
+	case 'I': return translate_alien_to_human_int(token.body);
+	case 'T': return "1";
+	case 'F': return "0";
+
+	default:
+		std::cout << "token indicator " << token.indicator << " can't be evalualted this way." << endl; 
+	}
+	return "";
+}
+
+std::string translate_alien_to_human_str(const std::string& alien_str) {
+	std::string result;
+
+	for (size_t i = 0; i < alien_str.size(); i++) {
+		char alien_code = alien_str[i];
+		result += char(Language::ALIEN_TABLE[alien_code - 33]);
+	}
+
+	return result;
+}
+
+std::string translate_alien_to_human_int(const std::string& alien_str) {
+	int integer = 0;
+
+	for (size_t i = 0; i < alien_str.size(); i++) {
+		integer *= 94;
+		integer += (int)alien_str[i] - 33;
+	}
+
+	return std::to_string(integer);
 }
