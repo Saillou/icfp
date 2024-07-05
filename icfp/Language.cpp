@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stack>
+#include <queue>
 
 using namespace std;
 
@@ -66,11 +68,46 @@ namespace Language
 	}
 
 	const std::string Eval(const std::vector<Token>& tokens) {
+		if (tokens.empty())
+			return "";
+
 		std::string human_str;
 
-		for (const auto& token : tokens) {
-			std::string human = translate_alien_to_human(token);
+		//std::stack<Token> st;
+		//st.push(tokens[0]);
+
+		//while (!st.empty()) {
+		//	Token current_token = st.top();
+		//	st.pop();
+		//}
+
+		for (size_t i = 0; i < tokens.size();) {
+			//i += Eval(tokens, i);
+		//	switch (tokens[i].indicator)
+		//	{
+		//		case '?': 
+		//		{
+		//			
+		//		} 
+		//		break;
+
+		//		case 'B':
+		//		{
+		//			switch (tokens[i].body[0])
+		//			{
+		//				case '>': 
+		//				{
+		//					
+		//				}
+		//				break;
+		//			}
+		//		}
+		//		break;
+		//	}
+			std::string human = translate_alien_to_human(tokens[i]);
 			human_str += human;
+			i++;
+			//std::cout << tokens[i].indicator << " " << tokens[i].body << std::endl;
 		}
 
 		return human_str;
